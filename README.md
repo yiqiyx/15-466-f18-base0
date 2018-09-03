@@ -1,11 +1,11 @@
 # Game Information
 (Note: fill in this portion with information about your game.)
 
-Title: (TODO: your game's title)
+Title: Stickoshet Robot
 
-Author: (TODO: your name)
+Author: Yiqi Xiao
 
-Design Document: [TODO: name of design document](TODO: link to design document)
+Design Document: Stickoshet Robot(http://graphics.cs.cmu.edu/courses/15-466-f18/game0-designs/default/)
 
 Screen Shot:
 
