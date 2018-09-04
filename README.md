@@ -8,10 +8,13 @@ Author: Yiqi Xiao (yiqix1)
 Design Document: Stickoshet Robot(http://graphics.cs.cmu.edu/courses/15-466-f18/game0-designs/default/)
 
 Screen Shot:
+
 screen shot 1: initialize game
 ![screen shot 1: initialize game](s1.png)
+
 screen shot 2: press arrow keys to collect checkpoint
 ![screen shot 2: press arrow keys to collect checkpoint](s2.png)
+
 screen shot 3: reset the game if reaching goal or pressing space
 ![screen shot 3: reset the game if reaching goal or pressing space](s3.png)
 
