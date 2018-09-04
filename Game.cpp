@@ -12,6 +12,18 @@
 #include <cstddef>
 #include <random>
 
+/*#ifdef __APPLE__
+#include <OpenGL/gl.h>
+#else
+#include <GL/gl.h>
+#endif
+
+#ifdef __APPLE__
+#include <GLUT/glut.h>
+#else
+#include <GL/glut.h>
+#endif*/
+
 //helper defined later; throws if shader compilation fails:
 static GLuint compile_shader(GLenum type, std::string const &source);
 
@@ -109,7 +121,8 @@ Game::Game() {
 	static_assert(sizeof(Vertex) == 28, "Vertex should be packed.");
 
 	{ //load mesh data from a binary blob:
-		std::ifstream blob(data_path("meshes.blob"), std::ios::binary);
+		// std::ifstream blob(data_path("meshes.blob"), std::ios::binary);
+		std::ifstream blob(data_path("stickochet.blob"), std::ios::binary);
 		//The blob will be made up of three chunks:
 		// the first chunk will be vertex data (interleaved position/normal/color)
 		// the second chunk will be characters
@@ -173,11 +186,13 @@ Game::Game() {
 			}
 			return f->second;
 		};
-		tile_mesh = lookup("Tile");
-		cursor_mesh = lookup("Cursor");
-		doll_mesh = lookup("Doll");
-		egg_mesh = lookup("Egg");
-		cube_mesh = lookup("Cube");
+		checkpoint_mesh = lookup("Checkpoint");
+		circle_mesh = lookup("Circle");
+		floor_mesh = lookup("Floor");
+		goal_mesh = lookup("Goal");
+		plane_mesh = lookup("Plane");
+		player_mesh = lookup("Player");
+		wall_mesh = lookup("Wall");
 	}
 
 	{ //create vertex array object to hold the map from the mesh vertex buffer to shader program attributes:
@@ -204,14 +219,9 @@ Game::Game() {
 	//set up game board with meshes and rolls:
 	board_meshes.reserve(board_size.x * board_size.y);
 	board_rotations.reserve(board_size.x * board_size.y);
-	std::mt19937 mt(0xbead1234);
+	resetBoard();
 
-	std::vector< Mesh const * > meshes{ &doll_mesh, &egg_mesh, &cube_mesh };
-
-	for (uint32_t i = 0; i < board_size.x * board_size.y; ++i) {
-		board_meshes.emplace_back(meshes[mt()%meshes.size()]);
-		board_rotations.emplace_back(glm::quat());
-	}
+	score = 0;
 }
 
 Game::~Game() {
@@ -251,26 +261,100 @@ bool Game::handle_event(SDL_Event const &evt, glm::uvec2 window_size) {
 	//move cursor on L/R/U/D press:
 	if (evt.type == SDL_KEYDOWN && evt.key.repeat == 0) {
 		if (evt.key.keysym.scancode == SDL_SCANCODE_LEFT) {
-			if (cursor.x > 0) {
-				cursor.x -= 1;
+			Mesh nextMesh = getNextMesh(cursor.x-1, cursor.y);
+			if (!isEqualMesh(nextMesh, plane_mesh)) {
+				if (isEqualMesh(nextMesh, checkpoint_mesh)) {
+					cursor.x -= 1;
+					collectCheckPoint(cursor.x, cursor.y);
+					score++;
+				} else if (isEqualMesh(nextMesh, goal_mesh)) {
+					cursor = glm::vec2(0,0);
+					resetBoard();
+					draw(glm::uvec2(640, 400));
+				} else if (isEqualMesh(nextMesh, floor_mesh)) {
+					cursor.x -= 1;
+				}
 			}
 			return true;
 		} else if (evt.key.keysym.scancode == SDL_SCANCODE_RIGHT) {
-			if (cursor.x + 1 < board_size.x) {
-				cursor.x += 1;
+			Mesh nextMesh = getNextMesh(cursor.x+1, cursor.y);
+			if (!isEqualMesh(nextMesh, plane_mesh)) {
+				if (isEqualMesh(nextMesh, checkpoint_mesh)) {
+					cursor.x += 1;
+					collectCheckPoint(cursor.x, cursor.y);
+					score++;
+				} else if (isEqualMesh(nextMesh, goal_mesh)) {
+					cursor = glm::vec2(0,0);
+					resetBoard();
+					draw(glm::uvec2(640, 400));
+				} else if (isEqualMesh(nextMesh, floor_mesh)) {
+					cursor.x += 1;
+				}
 			}
 			return true;
 		} else if (evt.key.keysym.scancode == SDL_SCANCODE_UP) {
-			if (cursor.y + 1 < board_size.y) {
-				cursor.y += 1;
+			Mesh nextMesh = getNextMesh(cursor.x, cursor.y+1);
+			if (!isEqualMesh(nextMesh, plane_mesh)) {
+				if (isEqualMesh(nextMesh, checkpoint_mesh)) {
+					cursor.y += 1;
+					collectCheckPoint(cursor.x, cursor.y);
+					score++;
+				} else if (isEqualMesh(nextMesh, goal_mesh)) {
+					cursor = glm::vec2(0,0);
+					resetBoard();
+					draw(glm::uvec2(640, 400));
+				} else if (isEqualMesh(nextMesh, floor_mesh)) {
+					cursor.y += 1;
+				}
 			}
 			return true;
 		} else if (evt.key.keysym.scancode == SDL_SCANCODE_DOWN) {
-			if (cursor.y > 0) {
-				cursor.y -= 1;
+			Mesh nextMesh = getNextMesh(cursor.x, cursor.y-1);
+			if (!isEqualMesh(nextMesh, plane_mesh)) {
+				if (isEqualMesh(nextMesh, checkpoint_mesh)) {
+					cursor.y -= 1;
+					collectCheckPoint(cursor.x, cursor.y);
+					score++;
+				} else if (isEqualMesh(nextMesh, goal_mesh)) {
+					cursor = glm::vec2(0,0);
+					resetBoard();
+					draw(glm::uvec2(640, 400));
+				} else if (isEqualMesh(nextMesh, floor_mesh)) {
+					cursor.y -= 1;
+				}
 			}
 			return true;
 		}
+	}
+	// press space to reset the game board
+	if (evt.type == SDL_KEYDOWN && evt.key.repeat == 0) {
+		if (evt.key.keysym.sym == SDLK_SPACE) {
+			cursor = glm::vec2(0,0);
+			resetBoard();
+			draw(glm::uvec2(640, 400));
+		}
+	}
+	return false;
+}
+
+Game::Mesh Game::getNextMesh(int x, int y) {
+	if (x >= 0 && x < board_size.x && y >= 0 && y < board_size.y) {
+		int idx = y * board_size.x + x;
+		Mesh tmpMesh = *board_meshes[idx];
+		return tmpMesh;
+	}
+	return plane_mesh;
+}
+
+void Game::collectCheckPoint(int x, int y) {
+	int idx = y * board_size.x + x;
+	board_meshes[idx] = &floor_mesh;
+	draw(glm::uvec2(640, 400));
+}
+
+bool Game::isEqualMesh(Mesh a, Mesh b) {
+	if (a.first == b.first && a.count == b.count) {
+		return true;
 	}
 	return false;
 }
@@ -304,6 +388,17 @@ void Game::update(float elapsed) {
 		}
 	}
 }
+
+/*void Game::drawScore() {
+	std::string str = std::to_string(score);
+	const char *charStr = str.c_str();
+	glRasterPos3f(0, 0, 0);
+	int i = 0;
+	while (charStr[i] != 0) {
+		glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_10, charStr[i]);
+		i++;
+	}
+}*/
 
 void Game::draw(glm::uvec2 drawable_size) {
 	//Set up a transformation matrix to fit the board in the window:
@@ -360,7 +455,7 @@ void Game::draw(glm::uvec2 drawable_size) {
 
 	for (uint32_t y = 0; y < board_size.y; ++y) {
 		for (uint32_t x = 0; x < board_size.x; ++x) {
-			draw_mesh(tile_mesh,
+			draw_mesh(floor_mesh,
 				glm::mat4(
 					1.0f, 0.0f, 0.0f, 0.0f,
 					0.0f, 1.0f, 0.0f, 0.0f,
@@ -379,7 +474,7 @@ void Game::draw(glm::uvec2 drawable_size) {
 			);
 		}
 	}
-	draw_mesh(cursor_mesh,
+	draw_mesh(player_mesh,
 		glm::mat4(
 			1.0f, 0.0f, 0.0f, 0.0f,
 			0.0f, 1.0f, 0.0f, 0.0f,
@@ -388,6 +483,7 @@ void Game::draw(glm::uvec2 drawable_size) {
 		)
 	);
 
+	//drawScore();
 
 	glUseProgram(0);
 
@@ -417,4 +513,30 @@ static GLuint compile_shader(GLenum type, std::string const &source) {
 		throw std::runtime_error("Failed to compile shader.");
 	}
 	return shader;
+}
+
+// reset the board
+void Game::resetBoard() {
+	board_meshes.clear();
+	board_rotations.clear();
+	std::mt19937 mt(0xbead1234);
+
+	std::vector< Mesh const * > meshes{ &checkpoint_mesh, &wall_mesh, &circle_mesh, &floor_mesh };
+
+	for (uint32_t i = 0; i < board_size.x * board_size.y; ++i) {
+		board_meshes.emplace_back(meshes[(std::rand()+1)%meshes.size()]);
+		board_rotations.emplace_back(glm::quat());
+	}
+
+	// clear the first location for player
+	board_meshes[0] = &floor_mesh;
+
+	// place a goal
+	while (true) {
+		int idx = mt()%board_meshes.size();
+		if (idx != 0) {
+			board_meshes[idx] = &goal_mesh;
+			break;
+		}
+	}
 }

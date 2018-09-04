@@ -3,21 +3,26 @@
 
 Title: Stickoshet Robot
 
-Author: Yiqi Xiao
+Author: Yiqi Xiao (yiqix1)
 
 Design Document: Stickoshet Robot(http://graphics.cs.cmu.edu/courses/15-466-f18/game0-designs/default/)
 
 Screen Shot:
 
-![Screen Shot](screenshot.png)
+![screen shot 1: initialize game](s1.png)
+![screen shot 2: press arrow keys to collect checkpoint](s2.png)
+![screen shot 3: reset the game if reaching goal or pressing space](s3.png)
 
 Difficulties Encountered:
 
-TODO: write several sentences about any difficulties you may have encountered in creating the game.
+1) I generate the game board by randomly placing walls, goops and goal, so chances are that the game is in an unreachable state as it begins. I think I should check if the player could get to the goal in generation.
+
+2) I failed to display score on the screen. I tried to draw by using glutBitmapCharacter() function, but it seems in mac OSX 10.9, glut functions are deprecated. 
 
 Good Code:
 
-TODO: write a sentence or two about any code you think you did particularly well.
+When exporting vertex color, we need to first check if vertex_colors exists. If not, we may create a new one.
+
 
 # Using This Base Code
 

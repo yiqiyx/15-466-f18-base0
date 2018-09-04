@@ -28,6 +28,14 @@ struct Game {
 	//draw is called after update:
 	void draw(glm::uvec2 drawable_size);
 
+	//void drawScore();
+
+	void resetBoard();
+
+	void collectCheckPoint(int x, int y);
+
+	int score = 0;
+
 	//------- opengl resources -------
 
 	//shader program that draws lit objects with vertex colors:
@@ -58,11 +66,17 @@ struct Game {
 		GLsizei count = 0;
 	};
 
-	Mesh tile_mesh;
-	Mesh cursor_mesh;
-	Mesh doll_mesh;
-	Mesh egg_mesh;
-	Mesh cube_mesh;
+	Game::Mesh getNextMesh(int x, int y);
+	bool isEqualMesh(Mesh a, Mesh b);
+
+	Mesh checkpoint_mesh;
+	Mesh circle_mesh;
+	Mesh floor_mesh;
+	Mesh goal_mesh;
+	Mesh plane_mesh;
+	Mesh player_mesh;
+	Mesh wall_mesh;
+
 
 	GLuint meshes_for_simple_shading_vao = -1U; //vertex array object that describes how to connect the meshes_vbo to the simple_shading_program
 

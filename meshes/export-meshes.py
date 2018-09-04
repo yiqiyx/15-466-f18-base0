@@ -86,6 +86,12 @@ for name in to_write:
 		else:
 			uvs = obj.data.uv_layers.active.data
 
+	vcol_data = None
+	if len(mesh.vertex_colors) == 0:
+		vcol_data = mesh.vertex_colors.new().data
+	else:
+		vcol_data = mesh.vertex_colors.active.data
+
 	#write the mesh:
 	for poly in mesh.polygons:
 		assert(len(poly.loop_indices) == 3)
@@ -99,7 +105,7 @@ for name in to_write:
 				data += struct.pack('f', x)
 			#TODO: set 'col' based on object's active vertex colors array.
 			# you should be able to use code much like the texcoord code below.
-			vcol = mesh.vertex_colors.active.data[poly.loop_indices[i]].color
+			vcol = vcol_data[poly.loop_indices[i]].color
 			col = mathutils.Color((vcol[0], vcol[1], vcol[2]))
 			data += struct.pack('BBBB', int(col.r * 255), int(col.g * 255), int(col.b * 255), 255)
 
